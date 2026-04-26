@@ -13,7 +13,7 @@ On the other hand, we also implement support for Funshield, which contains 3 but
 
 There are several differences from the actual Arduino that may cause problems. Please check the following issues and use the suggested workarounds so that your Arduino code works properly in Moccarduino.
 
-#### Using API functions during initialization is not possible
+### Using API functions during initialization is not possible
 
 **Wrong example:**
 ```c++
@@ -30,7 +30,7 @@ unsigned long t = millis();
 
 **Workaround:** Move any initialization that requires API functions to the `setup()` function, or to `loop()` (when first needed). You can initialize global variables with default values and then update them in `setup()`. You may create separate `init()` methods for objects that require API calls during initialization and call these methods from `setup()`.
 
-#### Differences in C++ language
+### Differences in C++ language
 
 - Some types have different sizes on Arduino (with respect to other compilers/platforms). Most notably, `int` is 16 bits on Arduino but 32 bits on x86. Make sure to use sufficiently large types for your variables (e.g., `unsigned long` for storing timestamps from `millis()`, instead of `int`).
 ```c++
@@ -56,7 +56,7 @@ void foo() {
 }
 ```
 
-#### Unsupported API features
+### Unsupported API features
 
 - The `String` class is not supported in Moccarduino (intentionally). Use C-strings instead.
 - The `Serial` interface is re-implemented in Moccarduino, but the write operations are not tested (so they can be used for debugging). Some testing scenarios feed data to the serial input, in such cases the reading methods will provide the data.
@@ -81,5 +81,5 @@ The most important part of the code is in the `shared` directory. The surroundin
 
 ## Credits and Disclaimer
 
-This code is currently being developed under the Department of Software Engineering, Faculty of Mathematics and Physics, Charles University (Prague, Czech Republic). It is being tailored to our needs, and we provide no guarantees whatsoever.
+This code is currently being developed under the [Department of Distributed and Dependable Systems](https://d3s.mff.cuni.cz/), Faculty of Mathematics and Physics, Charles University (Prague, Czech Republic). It is being tailored to our needs, and we provide no guarantees whatsoever.
  
