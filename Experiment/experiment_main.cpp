@@ -38,7 +38,6 @@ int main(int argc, char *argv[])
 
         arduino.runSetup();
 
-        // simulate 30s of run
         arduino.runLoopsForPeriod(time);
 
         // analyze output pin history

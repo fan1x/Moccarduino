@@ -13,69 +13,59 @@ On the other hand, we also implement support for Funshield which contains 3 butt
 
 There are several differences from the actual Arduino which may cause you problems. Please, check the following issues and use suggested workarounds so that your Arduino code works properly in Moccarduino.
 
-<table class="table">
-<thead>
-	<tr>
-		<th>Issue</th>
-		<th>Example</th>
-		<th>Workaround</th>
-	</tr>
-</thead>
-<tbody>
-	<tr>
-		<td>Unsupported complex initialization of global variables</td>
-		<td class="text-nowrap"><code>size_t t = millis();</code></td>
-		<td>
-			Initialize the variable with a default value and call the complex initialization in 
-			the <code>setup()</code> function.
-		</td>
-	</tr>
-	<tr>
-		<td>Serial communication API</td>
-		<td class="text-nowrap"><code>Serial.print();</code></td>
-		<td>Only <code>Serial.begin()</code>, <code>Serial.print()</code>, and <code>Serial.println()</code> are currently implemented (which should be enough for debugging). The methods does not perform anything, they are placeholders, so you do not remove you debug-code when testing. The testing scenaion may opt-out (disable the serial interface).</td>
-	</tr>
-	<tr>
-		<td><code>max</code> is a function (but a macro at Arduino IDE)</td>
-		<td class="text-nowrap"><code>int x; long y; max(x,y);</code></td>
-		<td>Always use min/max with identical types of arguments.</td>
-	</tr>
-	<tr>
-		<td>int/long are 16/32 bits at Arduino but 32/64 in most other compilers</td>
-		<td class="text-nowrap"><code>int32_t x; long y; max(x,y);</code></td>
-		<td>Do not mix int/long with int16_t/int32_t; make sure to use sufficiently large type for both platforms</td>
-	</tr>
-	<tr>
-		<td>Funshield include</td>
-		<td class="text-nowrap"><code>#include &lt;funshield.h&gt;</code></td>
-		<td>Replace by <code>#include "funshield.h"</code></td>
-	</tr>
-	<tr>
-		<td>Conservative C++ (order of declarations)</td>
-		<td class="text-nowrap"><code>int main() { foo(); ...}</code><br><code>void foo() {...}</code></td>
-		<td>In C++, you need to declare functions (classes, ...) before you use them (Arduino IDE is more benevolent).</td>
-	</tr>
-	<tr>
-		<td>Static methods</td>
-		<td class="text-nowrap"><code>class Foo { static void foo() ... }</code></td>
-		<td>Static methods do not work in Moccarduino, use plain old C functions instead.</td>
-	</tr>
-	<tr>
-		<td>Initialization</td>
-		<td class="text-nowrap"><code>class Button { </code><br>
-			<code>  Button() { pinMode( b[0], INPUT); } </code><br>
-			<code>};</code></td>
-		<td>Emulated functions from Arduino IDE (e.g., pinMode) <b>MUST</b> be called in setup (not in constructors). Early emulator initialization (e.g., in a constructor of a global object) causes a signal and your program is terminated.</td>
-	</tr>
-	<tr>
-		<td>Unsupported type <code>String</code></td>
-		<td class="text-nowrap"><code>String stringOne = "Hello String";</code></td>
-		<td>Use standard C-strings instead, i.e., <code>const char *stringOne = "Hello String";</code></td>
-	</tr>
-</tbody>
-</table>
+#### Using API functions during initialization
 
-Furthermore, the Moccarduino implements only functions from documented Arduino API. Hardware functionality that required direct access to registers (e.g., timers) is not supported.
+**Example:**
+```c++
+class Button {
+	Button() { pinMode( BTN[0], INPUT); }
+};
+Button button;
+```
+or
+```c++
+unsigned long t = millis();
+```
+
+**Reason:** Emulated functions from Arduino IDE (like `pinMode` or `millis`) **MUST NOT** be called before setup (i.e., not in constructors of globally instantiated objects nor in initializers of global variables). Early emulator initialization (like in the examples) causes a signal and your program is terminated.
+
+**Workaround:** Move any initialization that requires API functions to the `setup()` function, or in `loop()` (when first needed). You can initialize global variables with default values and then update them in `setup()`. You may create separate `init()` methods for objects that require API calls during initialization and call these methods from `setup()`.
+
+
+#### Differences in C++ language
+
+- Some type have different sizes on Arduino (wrt other compilers/platforms). Most notably, `int` is 16 bits on Arduino but 32 bits on x86. Make sure to use sufficiently large types for your variables (e.g., `unsigned long` for storing timestamps from `millis()`, instead of `int`).
+```c++
+int t = millis(); // BAD! ints will overflow in 65.536 seconds after startup
+unsigned long t = millis(); // GOOD! (millis() returns unsigned long which is 32b long)
+```
+- `min()` and `max()` are (templated) functions in C++ STL, but macros in Arduino IDE. This may cause problems when you mix types (e.g., `int` and `long`) as the templated function may not be able to deduce the correct type.
+```c++
+unsigned long ts = millis();
+if (min(ts, 1000) < 1000) // COMPILE ERROR in emulator (mixing unsigned long and int)
+
+constexpr unsigned long MAX_DELAY = 1000;
+if (min(ts, MAX_DELAY) < MAX_DELAY) // GOOD! (both arguments are unsigned long)
+```
+- C++ uses conservative order of declarations, i.e., you need to declare functions (classes, ...) before you use them (and so it is required in the emulator). Arduino IDE is more benevolent and allows you to call functions before their declaration. It is a good practice to conform to the standard C++ rules and declare functions before their use.
+```C++
+void setup() {
+	foo(); // BAD! foo is not declared yet (move it before setup)
+}
+
+void foo() {
+	// ...
+}
+```
+
+
+#### Unsupported API features
+
+- The `String` class is not supported in Moccarduino (intentionally). Use C-strings instead.
+- The `Serial` interface is re-implemented in Moccarduino, but the write operations are not tested (so they can be used for debugging). Some testing scenarios feed data to the serial input, in such cases the reading methods will provide the data.
+- Some features may be disabled intentionally in some testing scenarios. Particularly, the `delay()` and `delayMicroseconds()` functions are usually disabled, so the students are forced to do proper timing using API like `millis()`. Refer to the assignment description for details.
+
+Furthermore, the Moccarduino implements only functions from the documented Arduino API. Hardware functionality that required direct access to registers (e.g., timers) is not supported. This is intentional since one should code in a portable way (against an API) and not rely on specific hardware features.
 
 ## Code Overview
 
